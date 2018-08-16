@@ -7,7 +7,7 @@ class Database(object):
 
     def __init__(self, db_name):
         db_path = os.path.join(os.getcwd(), db_name)
-        self.connection = sqlite3.connect(db_path)
+        self.connection = sqlite3.connect(db_path, timeout=1, check_same_thread=False, isolation_level=None)
         self.cur = self.connection.cursor()
 
     def remove_table(self, table_name):

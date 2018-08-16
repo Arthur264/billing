@@ -23,6 +23,8 @@ class Parser(object):
     def _skip_row(self, row):
         if not row or not row[FieldsIndices.SCALRMETA]:
             return True
+        if not self._extract_meta(row[FieldsIndices.SCALRMETA]):
+            return True
         if any([i for i in row if i == self.SKIP_NAME]):
             return True
         return False
@@ -34,17 +36,11 @@ class Parser(object):
     def _create_account_table(self):
         self.db.query(SQL_ACCOUNT_TABLE)
         self.db.query(SQL_ACCOUNT_TYPE_TABLE)
-        sql_insert_role = """INSERT INTO account_type(name) VALUES (?)"""
-        try:
-            self.db.insert_many(sql_insert_role, self._role_iter())
-        except IntegrityError:
-            return None
+        sql_insert_role = """INSERT OR IGNORE INTO account_type(name) VALUES (?)"""
+        self.db.insert_many(sql_insert_role, self._role_iter())
 
     def _extract_meta(self, user_meta):
-        try:
-            return enumerate(re.findall(META_PATTERN, user_meta)[0], 1)
-        except IndexError:
-            return None
+        return re.findall(META_PATTERN, user_meta)
 
     def _cost_iter(self):
         for role, values in self.total_cost.items():
@@ -55,11 +51,8 @@ class Parser(object):
         self.db.insert_many("INSERT OR IGNORE INTO account(object_type, object_id, cost) VALUES (?, ?, ?);", self._cost_iter())
 
     def process_row(self, row):
-        meta = self._extract_meta(row[FieldsIndices.SCALRMETA])
-        if not meta:
-            return None
-
-        for index, _id in meta:
+        meta_data = self._extract_meta(row[FieldsIndices.SCALRMETA])
+        for index, _id in enumerate(meta_data[0], 1):
             if not _id:
                 continue
             current_total = self.total_cost[index]
