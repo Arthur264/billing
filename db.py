@@ -1,20 +1,22 @@
+import os
 import sqlite3
 from sqlite3 import Error
-import os
 
 
 class Database(object):
 
     def __init__(self, db_name):
         db_path = os.path.join(os.getcwd(), db_name)
-        self._connection = sqlite3.connect(db_path, timeout=10)
+        self._connection = sqlite3.connect(db_path, timeout=20, check_same_thread=False, isolation_level=None)
         self.cur = self._connection.cursor()
+        self.cur.execute("PRAGMA journal_mode=WAL")
 
     def remove_table(self, table_name):
         try:
             self.cur.execute("DROP TABLE {}".format(table_name))
-        except Error as e:
-            print (e)
+            return True
+        except Error:
+            return None
 
     def commit(self):
         self._connection.commit()
@@ -27,7 +29,7 @@ class Database(object):
             self.cur.execute(query)
             self.commit()
             return True
-        except Error as e:
+        except Error:
             self.rollback()
             return False
 
@@ -35,7 +37,6 @@ class Database(object):
         result = self.cur.executemany(query, values).fetchall()
         self.commit()
         return result
-
 
     def query(self, query):
         result = self.cur.execute(query).fetchall()
