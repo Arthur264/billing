@@ -1,13 +1,16 @@
 import io
 import os
 import csv
+import sys
 import re
 from db import Database
 from sql_script import (
     SQL_ACCOUNT_TABLE,
     SQL_ACCOUNT_TYPE_TABLE,
     SQL_INSERT_ACCOUNT,
-    SQL_INSERT_ACCOUNT_TYPE
+    SQL_INSERT_ACCOUNT_TYPE,
+    SQL_UPDATE_ACCOUNT,
+    SQL_EXIST_ACCOUNT
 )
 
 FOLDER_NAME = 'tmp'
@@ -28,7 +31,6 @@ class Parser(object):
         self._con = Database(DATABASE_NAME)
         self.file_name = file_name
         self.total_cost = {index: {} for index, _ in ROLES}
-        self._create_account_table()
 
     def _skip_row(self, row):
         if not row or not row[FieldsIndices.SCALRMETA]:
@@ -45,22 +47,30 @@ class Parser(object):
             yield (role,)
 
     def _create_account_table(self):
+        account = self._con.query(SQL_EXIST_ACCOUNT)
+        if account:
+            return False
         self._con.query(SQL_ACCOUNT_TABLE)
         self._con.query(SQL_ACCOUNT_TYPE_TABLE)
         self._con.insert_many(SQL_INSERT_ACCOUNT_TYPE, self._role_iter())
+        return True
 
     @staticmethod
     def _extract_meta(user_meta):
         return re.findall(META_PATTERN, user_meta)
 
-    def _cost_iter(self):
+    def _cost_iter(self, update=False):
         for role, values in self.total_cost.items():
             for _id, cost in values.items():
-                yield (role, _id, cost)
+                if update:
+                    yield (role, _id, cost)
+                else:
+                    yield (cost, _id, role)
 
     def _insert_cost(self):
-        print('********')
-        return self._con.insert_many(SQL_INSERT_ACCOUNT, self._cost_iter())
+        self._con.insert_many(SQL_UPDATE_ACCOUNT, self._cost_iter(update=True))
+        self._con.insert_many(SQL_INSERT_ACCOUNT, self._cost_iter())
+        return True
 
     def process_row(self, row):
         meta_data = self._extract_meta(row[FieldsIndices.SCALRMETA])
@@ -79,5 +89,6 @@ class Parser(object):
         return self._insert_cost()
 
     def start(self):
+        self._create_account_table()
         file_path = os.path.join(FOLDER_NAME, self.file_name)
         self.process_file(file_path)

@@ -7,9 +7,10 @@ class Database(object):
 
     def __init__(self, db_name):
         db_path = os.path.join(os.getcwd(), db_name)
-        self._connection = sqlite3.connect(db_path, timeout=20, check_same_thread=False, isolation_level=None)
+        self._connection = sqlite3.connect(db_path, timeout=10, check_same_thread=False)
         self.cur = self._connection.cursor()
-        self.cur.execute("PRAGMA journal_mode=WAL")
+        self.cur.execute("PRAGMA synchronous = OFF")
+        self.cur.execute("PRAGMA journal_mode = MEMORY")
 
     def remove_table(self, table_name):
         try:
@@ -34,9 +35,13 @@ class Database(object):
             return False
 
     def insert_many(self, query, values):
-        result = self.cur.executemany(query, values).fetchall()
+        try:
+            self.cur.executemany(query, values)
+        except (Error, sqlite3.Warning):
+            for value in values:
+                self.cur.execute(query, value)
         self.commit()
-        return result
+        return True
 
     def query(self, query):
         result = self.cur.execute(query).fetchall()
