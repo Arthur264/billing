@@ -63,9 +63,9 @@ class Parser(object):
         for role, values in self.total_cost.items():
             for _id, cost in values.items():
                 if update:
-                    yield (role, _id, cost)
-                else:
                     yield (cost, _id, role)
+                else:
+                    yield (role, _id, cost)
 
     def _insert_cost(self):
         self._con.insert_many(SQL_UPDATE_ACCOUNT, self._cost_iter(update=True))
