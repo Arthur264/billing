@@ -8,3 +8,6 @@ SQL_ACCOUNT_TYPE_TABLE = """ CREATE TABLE IF NOT EXISTS account (
                                 object_id text UNIQUE,
                                 cost real
                             );"""
+
+SQL_INSERT_ACCOUNT = """INSERT OR IGNORE INTO account(object_type, object_id, cost) VALUES (?, ?, ?);"""
+SQL_INSERT_ACCOUNT_TYPE = """INSERT OR IGNORE INTO account_type(name) VALUES (?)"""
