@@ -25,6 +25,8 @@ class Parser(object):
             return True
         if any([i for i in row if i == self.SKIP_NAME]):
             return True
+        if not self._extract_meta(row[FieldsIndices.SCALRMETA]):
+            return True
         return False
 
     def _role_iter(self):
@@ -55,11 +57,7 @@ class Parser(object):
         self.db.insert_many("INSERT OR IGNORE INTO account(object_type, object_id, cost) VALUES (?, ?, ?);", self._cost_iter())
 
     def process_row(self, row):
-        meta = self._extract_meta(row[FieldsIndices.SCALRMETA])
-        if not meta:
-            return None
-
-        for index, _id in meta:
+        for index, _id in self._extract_meta(row[FieldsIndices.SCALRMETA]):
             if not _id:
                 continue
             current_total = self.total_cost[index]
